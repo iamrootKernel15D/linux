@@ -16,3 +16,23 @@ See Documentation/00-INDEX for a list of what is contained in each file.
 Please read the Documentation/process/changes.rst file, as it contains the
 requirements for building and running the kernel, and information about
 the problems which may result by upgrading your kernel.
+
+
+
+Linux kernel Compile
+====================
+
+Verify current kernel version
+$uname -r
+
+Install kernel compile package
+$sudo apt-get install build-essential libncurses5 libncurses5-dev libssl-dev libelf-dev bin86 kernel-package -y
+
+Compile kenel 
+$make -j8
+
+Make kernel package & ramdisk
+$sudo make-kpkg --initrd --revision=1.0 kernel_image
+
+Install kernel
+$sudo dpkg -i linux-image-4.16.0_1.0_amd64.deb 
