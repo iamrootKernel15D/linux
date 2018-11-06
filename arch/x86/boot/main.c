@@ -118,8 +118,14 @@ static void set_bios_mode(void)
 
     initregs(&ireg);
     ireg.ax = 0xec00;
+
+    /* 32비트 모드로 점프 */
+    /* ljmp 대신에 bios call을이용해서 점프한다. */
+    /* operatin mode, 1은 Legacy mode target only, 2는 long mode target only, 3은 mixed mode target이다 */
     ireg.bx = 2;
+
     intcall(0x15, &ireg, NULL);
+    /* 이제는 32비트 모드 */
 #endif
 }
 
@@ -128,13 +134,19 @@ static void init_heap(void)
     char *stack_end;
 
     if (boot_params.hdr.loadflags & CAN_USE_HEAP) {
+        /* stack_end = esp - STACK_SIZE */
         asm("leal %P1(%%esp),%0"
-            : "=r" (stack_end) : "i" (-STACK_SIZE));
+            : "=r" (stack_end) : "i" (-STACK_SIZE)); /* STACK_SIZE = 16KB */
 
+        /* heap_end = (_end + STACK_SIZE - 512) + 512 */
         heap_end = (char *)
             ((size_t)boot_params.hdr.heap_end_ptr + 0x200);
-        if (heap_end > stack_end)
+
+        /* heap_size == stack_size == 0x200 == 512 */
+        if (heap_end > stack_end){
             heap_end = stack_end;
+        }
+
     } else {
         /* Boot protocol 2.00 only, no heap available */
         puts("WARNING: Ancient bootloader, some functionality "

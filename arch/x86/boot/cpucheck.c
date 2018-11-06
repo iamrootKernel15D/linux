@@ -93,6 +93,7 @@ static int check_cpuflags(void)
 
 	err = 0;
 	for (i = 0; i < NCAPINTS; i++) {
+        /* 있어야할 cpu플래그가 없으면 (req_flags와 cpu.flag 비트가 다르면) */
 		err_flags[i] = req_flags[i] & ~cpu.flags[i];
 		if (err_flags[i])
 			err |= 1 << i;
@@ -120,6 +121,8 @@ int check_cpu(int *cpu_level_ptr, int *req_level_ptr, u32 **err_flags_ptr)
 		cpu.level = 4;
 
 	get_cpuflags();
+
+    /* 환경설정(make menuconfig)된 cpu정보와 실제 정보가 다른경우 */
 	err = check_cpuflags();
 
 	if (test_bit(X86_FEATURE_LM, cpu.flags))
@@ -186,6 +189,8 @@ int check_cpu(int *cpu_level_ptr, int *req_level_ptr, u32 **err_flags_ptr)
 		}
 	}
 	if (!err)
+        /* 버그 감지 - intel cpu INTEL_FAM6_XEON_PHI가 64비트가 아닐 경우 에라타(errta). */
+        /* (하드웨어적인 버그 때문에 예외처리) */
 		err = check_knl_erratum();
 
 	if (err_flags_ptr)

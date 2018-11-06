@@ -12,6 +12,7 @@ u32 cpu_vendor[3];
 
 static bool loaded_flags;
 
+/* FPU가 시스템상에 존재하는지 확인. */
 static int has_fpu(void)
 {
 	u16 fcw = -1, fsw = -1;
@@ -37,8 +38,8 @@ static int has_fpu(void)
  * to be 'pushfq' or 'popfq' in that case.
  */
 #ifdef __x86_64__
-#define PUSHF "pushfq"
-#define POPF "popfq"
+#define PUSHF "pushfq"  /* push eflag */
+#define POPF "popfq"    /* pop  elfag */
 #else
 #define PUSHF "pushfl"
 #define POPF "popfl"
@@ -48,6 +49,8 @@ int has_eflag(unsigned long mask)
 {
 	unsigned long f0, f1;
 
+    /* EFLAG의 값을 스택에 넣은다음, EFLAG를 변수로 추출 */
+    /* 이후에 정의된 mask비트를 사용해서 EFLAG의 특정비트를 알아낸다 */
 	asm volatile(PUSHF "	\n\t"
 		     PUSHF "	\n\t"
 		     "pop %0	\n\t"
@@ -71,9 +74,12 @@ int has_eflag(unsigned long mask)
 # define EBX_REG "=b"
 #endif
 
+/* x86의"cpuid"명령을 사용하여cpu정보를 알아낸다. */
+/* 그러면ax, bx, cx, dx에 정보가 저장되고 그것을 vender배열로 리턴 */
 static inline void cpuid_count(u32 id, u32 count,
 		u32 *a, u32 *b, u32 *c, u32 *d)
 {
+    /* cpuid명령 : https://ko.wikipedia.org/wiki/CPUID */
 	asm volatile(".ifnc %%ebx,%3 ; movl  %%ebx,%3 ; .endif	\n\t"
 		     "cpuid					\n\t"
 		     ".ifnc %%ebx,%3 ; xchgl %%ebx,%3 ; .endif	\n\t"
@@ -82,8 +88,11 @@ static inline void cpuid_count(u32 id, u32 count,
 	);
 }
 
+/*  두번째 인자가 0임을 유의 */
 #define cpuid(id, a, b, c, d) cpuid_count(id, 0, a, b, c, d)
 
+/* "x86의 cpuid명령"을 통해서 cpu에 대한 정보를 가저와서*/
+/* "커널의 cpu_features 구조체"에 저장 */
 void get_cpuflags(void)
 {
 	u32 max_intel_level, max_amd_level;
