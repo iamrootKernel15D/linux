@@ -51,15 +51,22 @@ ENTRY(startup_32)
 	 * kernel(text+data+bss+brk) ramdisk, zero_page, command line
 	 * all need to be under the 4G limit.
 	 */
-	cld
+	cld /* string류 명령 실행시 낮은주소를 높은 주소로 */
 	/*
 	 * Test KEEP_SEGMENTS flag to see if the bootloader is asking
 	 * us to not reload segments
 	 */
-	testb $KEEP_SEGMENTS, BP_loadflags(%esi)
+    /* boot_parms arch\x86\include\uapi\asm\bootparam.h 에 정의된 struct setup_header 구조체. */
+    /* esi = boot_params + ds segment address */
+
+    /* 세그먼트를 유지할지? 초기화 할지? 를 결정한다. 이는 boot_params에 명시되어 있으므로  */
+    /* 그 값에 따라 1이면 세그먼트를 __BOOT_DS로초기화하고 아니면 그대로 진행한다           */
+	testb $KEEP_SEGMENTS, BP_loadflags(%esi) /* -> *(esi + BP_loadflags(529)) & KEEP_SEGMENTS(64) */
 	jnz 1f
 
 	cli
+
+    /* GDT의 DS로 ds, es, ss를 초기화 */
 	movl	$(__BOOT_DS), %eax
 	movl	%eax, %ds
 	movl	%eax, %es
@@ -74,10 +81,14 @@ ENTRY(startup_32)
  * data at 0x1e4 (defined as a scratch field) are used as the stack
  * for this calculation. Only 4 bytes are needed.
  */
-	leal	(BP_scratch+4)(%esi), %esp
+/* BP_scratch 484 */
+/* #define BP_scratch 484 /* offsetof(struct boot_params, scratch) # */
+/* boot_params에 scratch임시로 값을 써서 사용 */
+	leal	(BP_scratch+4)(%esi), %esp  /* esp = &(*(esi + BP_scratch + 4)) */
+    /* call은 현재 주소를 스택에 push한 결과와 동일하다 */
 	call	1f
 1:	popl	%ebp
-	subl	$1b, %ebp
+	subl	$1b, %ebp   /* ebp -= 1(label address) */
 
 /* setup a stack and make sure cpu supports long mode. */
 	movl	$boot_stack_end, %eax

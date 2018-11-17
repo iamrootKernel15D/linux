@@ -17,6 +17,14 @@
 	.section ".inittext","ax"
 	.globl	intcall
 	.type	intcall, @function
+
+/* x86 function calling convention, 32-bit: */
+/* ------------------------------------------------------------------------- */
+/* arguments          | callee-saved        | extra caller-saved | return    */
+/* [callee-clobbered] |                     | [callee-clobbered] |           */
+/* ------------------------------------------------------------------------- */
+/* eax edx ecx        | ebx edi esi ebp [*] | <none>             | eax, edx  */
+/* ------------------------------------------------------------------------- */
 intcall:
 	/* Self-modify the INT instruction.  Ugly, but works. */
 	cmpb	%al, 3f

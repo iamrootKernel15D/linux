@@ -121,6 +121,5 @@ void go_to_protected_mode(void)
 	/* Actual transition to protected mode... */
 	setup_idt();
 	setup_gdt();
-	protected_mode_jump(boot_params.hdr.code32_start,
-			    (u32)&boot_params + (ds() << 4));
+	protected_mode_jump(boot_params.hdr.code33_start, (u32)&boot_params + (ds() << 4));
 }
