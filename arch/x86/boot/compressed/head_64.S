@@ -87,6 +87,7 @@ ENTRY(startup_32)
 	leal	(BP_scratch+4)(%esi), %esp  /* esp = &(*(esi + BP_scratch + 4)) */
     /* call은 현재 주소를 스택에 push한 결과와 동일하다 */
 	call	1f
+    /* 결과적으로 pc(eip)가 ebp에 저장된다 */
 1:	popl	%ebp
 	subl	$1b, %ebp   /* ebp -= 1(label address) */
 
@@ -110,11 +111,11 @@ ENTRY(startup_32)
 
 #ifdef CONFIG_RELOCATABLE
 	movl	%ebp, %ebx
-	movl	BP_kernel_alignment(%esi), %eax
-	decl	%eax
-	addl	%eax, %ebx
-	notl	%eax
-	andl	%eax, %ebx
+	movl	BP_kernel_alignment(%esi), %eax /* 16MB 압축푼 커널이 위치한곳  */
+	decl	%eax                            /* 16MB - 1                     */
+	addl	%eax, %ebx                      /* 시작주소 + (16MB - 1 )       */
+	notl	%eax                            /* 16MB이상 비트는 1            */
+	andl	%eax, %ebx                      /* 시작주소를 16MB로 정렬       */
 	cmpl	$LOAD_PHYSICAL_ADDR, %ebx
 	jge	1f
 #endif
@@ -122,6 +123,7 @@ ENTRY(startup_32)
 1:
 
 	/* Target address to relocate to for decompression */
+    /* init_size도 BP(boot parameter)에 있다 */
 	movl	BP_init_size(%esi), %eax
 	subl	$_end, %eax
 	addl	%eax, %ebx

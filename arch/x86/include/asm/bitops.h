@@ -69,6 +69,7 @@
  * Note that @nr may be almost arbitrarily large; this function is not
  * restricted to acting on a single-word quantity.
  */
+/*  addr의주소의 nr번째 비트를 1로 초기화한다. */
 static __always_inline void
 set_bit(long nr, volatile unsigned long *addr)
 {

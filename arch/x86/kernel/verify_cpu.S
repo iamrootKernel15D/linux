@@ -36,21 +36,22 @@
 ENTRY(verify_cpu)
 	pushf				# Save caller passed flags
 	push	$0			# Kill any dangerous flags
-	popf
+	popf                # eflags = 0
 
 #ifndef __x86_64__
-	pushfl				# standard way to check for cpuid
-	popl	%eax
-	movl	%eax,%ebx
-	xorl	$0x200000,%eax
+	pushfl				    # standard way to check for cpuid (Able to use CPUID instruction?)
+	popl	%eax            # eax = eflags
+	movl	%eax,%ebx       # ebx = eflags
+	xorl	$0x200000,%eax  # eax = eflags ^ 0x200000
 	pushl	%eax
-	popfl
+	popfl                   # eflags ^= 0x200000 (즉, eflags의 cpuid명령 비트를 확인)
 	pushfl
 	popl	%eax
-	cmpl	%eax,%ebx
+	cmpl	%eax,%ebx       # xor전의 eflags와 현재 eflags를 비교
 	jz	.Lverify_cpu_no_longmode	# cpu has no cpuid
 #endif
 
+    # cpuid 명령을 사용해서 제조업체 문자열("AuthenticAMD", "GenuineIntel")을 검사.
 	movl	$0x0,%eax		# See if cpuid 1 is implemented
 	cpuid
 	cmpl	$0x1,%eax
@@ -74,34 +75,52 @@ ENTRY(verify_cpu)
 	cmpl	$0x6c65746e,%ecx
 	jnz	.Lverify_cpu_check
 
+	/* cpuid eax
+    3:0 – Stepping
+    7:4 – Model
+    11:8 – Family
+    13:12 – Processor Type
+    19:16 – Extended Model
+    27:20 – Extended Family
+	*/
+
 	# only call IA32_MISC_ENABLE when:
 	# family > 6 || (family == 6 && model >= 0xd)
 	movl	$0x1, %eax		# check CPU family and model
 	cpuid
 	movl	%eax, %ecx
 
-	andl	$0x0ff00f00, %eax	# mask family and extended family
+	andl	$0x0ff00f00, %eax	# mask family(11 ~ 8) and extended family(27 ~ 20)
 	shrl	$8, %eax
 	cmpl	$6, %eax
 	ja	.Lverify_cpu_clear_xd	# family > 6, ok
 	jb	.Lverify_cpu_check	# family < 6, skip
 
-	andl	$0x000f00f0, %ecx	# mask model and extended model
+	andl	$0x000f00f0, %ecx	# mask model(7~4) and extended model(19~16)
 	shrl	$4, %ecx
 	cmpl	$0xd, %ecx
 	jb	.Lverify_cpu_check	# family == 6, model < 0xd, skip
 
 .Lverify_cpu_clear_xd:
 	movl	$MSR_IA32_MISC_ENABLE, %ecx
-	rdmsr
+	rdmsr					# rdmsr(Read from Model Specific Register) 명령어는 msr 번호(ecx)에 해당하는 레지스터 값을 edx:eax에 읽어온다. 
 	btrl	$2, %edx		# clear MSR_IA32_MISC_ENABLE_XD_DISABLE
 	jnc	.Lverify_cpu_check	# only write MSR if bit was changed
-	wrmsr
+	wrmsr					# btrl에서 2번째 비트를 클리어(0)한 edx를 msr에 넣는다.
 
 .Lverify_cpu_check:
 	movl    $0x1,%eax		# Does the cpu have what it takes
 	cpuid
-	andl	$REQUIRED_MASK0,%edx
+
+    /*
+    #define REQUIRED_MASK0	(NEED_FPU|NEED_PSE|NEED_MSR|NEED_PAE|\
+			                 NEED_CX8|NEED_PGE|NEED_FXSR|NEED_CMOV|\
+			                 NEED_XMM|NEED_XMM2)
+    #define SSE_MASK	    (NEED_XMM|NEED_XMM2)
+    #define REQUIRED_MASK1	(NEED_LM|NEED_3DNOW)
+    */
+
+	andl	$REQUIRED_MASK0,%edx # cpu의 기능이 있는지 확인
 	xorl	$REQUIRED_MASK0,%edx
 	jnz	.Lverify_cpu_no_longmode
 

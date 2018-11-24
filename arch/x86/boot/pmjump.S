@@ -23,7 +23,7 @@
 /*
  * void protected_mode_jump(u32 entrypoint, u32 bootparams);
  */
-/* parameter: eax, edx, ecx ...
+/* parameter: eax, edx, ecx ... */
 GLOBAL(protected_mode_jump)
 	movl	%edx, %esi		# Pointer to boot_params table 
                             # 두번째파라미터(&boot_params + ds segment address)를 esi에 저장
